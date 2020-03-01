@@ -60,7 +60,6 @@ class jkcl:
             map1_masked = self.map1 * mask
             if self.map2 is not None:
                 # Computes cross correlation if two maps are specified.
-                print('Two maps are here.')
                 map2_masked = self.map2 * mask
                 cl = hp.anafast(map1_masked, map2_masked, lmax=self.lmax) / self.fsky
             else:
