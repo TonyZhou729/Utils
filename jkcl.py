@@ -4,36 +4,34 @@ import time
 
 class jkcl:
     # Initialization of jackknife procedure object.
-    def __init__(self, nside=2048, lmax=2048, nside_jk=4):
-        self.nside = nside # nside of real space maps. Default 2048
-        self.lmax = lmax # lmax of output Cls and alm maps. Default 2048
+    def __init__(self, map1, map2=None, nside=2048, lmax=2048, nside_jk=4):
+        '''
+        Parameters:
+        -----------
+        map1: REAL SPACE Healpix map.
+        map2: REAL SPACE Healpix map, or None.
+            - Compute cross correlation if given, otherwise just uses the first map.
+        nside: nside of real space maps. Default 2048.
+        lmax: lmax of output Cls and alms used for computation. Default 2048
+        nside_jk: nside of jackknife portion map, whose pixels will be used for masking.
+            - If 4, compute 12*4*4 = 192 Jackknifes.
+            - If 2, compute 12*2*2 = 48 Jackknifes.
+            - Default is 4.
+        '''
+
+        self.nside = nside
+        self.lmax = lmax
 
         self.njk = hp.nside2npix(nside_jk) # Number of jacknifes = 12 * jacknife_nside^2
-        # The larger this nside, the more jackknifes will be computed
+        # The larger this nside, the more jackknifes to compute.
 
         self.fsky = 1. - 1/self.njk # Area normalization based on jackknife.
 
-        ### Cross Correlation data. Need to be initialized by calling the loadfiles method.
-        self.map1 = None
-        self.map2 = None
+        ### Cross Correlation maps.
+        self.map1 = hp.ud_grade(map1, nside_out=self.nside)
+        self.map2 = (hp.ud_grade(map2, nside_out=self.nside) if map2 is not None else None)
         
         self.result = np.arange(0, lmax+1, 1)
-    
-    def loadfiles(self, path1, path2=None, alm=False):
-        '''
-        Load data from file names using hp.read_...
-        Assumes real map paths by default. If paths are alm maps, specify alm=True.
-        If path2 is not specified, computed will be self correlation instead of cross correlation.
-        '''
-        if alm:
-            self.map1 = hp.alm2map(hp.read_alm(path1), nside=self.nside)
-            if path2 != None:
-                self.map2 = hp.alm2map(hp.read_alm(path2), nside=self.nside)
-
-        else:
-            self.map1 = hp.ud_grade(hp.read_map(path1), nside_out=self.nside)
-            if path2 != None:
-                self.map2 = hp.ud_grade(hp.read_map(path2), nside_out=self.nside)
 
     def pixel_mask(self, idx):
         '''
@@ -48,7 +46,7 @@ class jkcl:
 
     def compute_jkf(self):
         '''
-        Iterates through the njk jackknifes, computing a gross cross correlation each time
+        Iterates through the njk jackknifes, computing a cross correlation each time
         with 1/njk of the area taken out (from both maps). 
         Adds the resulting jackknifed cl to the total results using np.column_stack.
         There will be njk columns of cls, each from 0 to lmax.
